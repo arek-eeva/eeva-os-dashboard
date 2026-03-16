@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EEVA OS Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Erica+One&family=Mansalva&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #1E3008;
+    --lime: #C4CD22;
+    --cream: #FEF9ED;
+    --amber: #F59E0B;
+    --red: #DC2626;
+    --blue: #2563EB;
+    --slate: #64748B;
+    --border: #E2E8F0;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--green);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* AUTH OVERLAY */
+  #auth-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: var(--green);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px; padding: 32px;
+  }
+  #auth-overlay h1 {
+    font-family: 'Erica One', serif;
+    color: var(--lime);
+    font-size: clamp(2rem, 6vw, 3rem);
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  #auth-overlay p { color: #fff; opacity: 0.7; text-align: center; }
+  #auth-form { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  #auth-input {
+    padding: 12px 16px; border-radius: 8px; border: none;
+    font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 600;
+    text-align: center; letter-spacing: 4px; width: 140px;
+    background: rgba(255,255,255,0.15); color: #fff;
+    outline: none;
+  }
+  #auth-input::placeholder { letter-spacing: 2px; opacity: 0.5; }
+  #auth-btn {
+    padding: 12px 24px; border-radius: 8px; border: none;
+    background: var(--lime); color: var(--green);
+    font-family: 'Inter', sans-serif; font-weight: 700; font-size: 15px;
+    cursor: pointer;
+  }
+  #auth-error { color: #FCA5A5; font-size: 13px; text-align: center; display: none; }
+
+  /* HEADER */
+  header {
+    background: var(--green);
+    padding: 16px 20px 0;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .header-top h1 {
+    font-family: 'Erica One', serif;
+    color: var(--lime);
+    font-size: 1.4rem;
+    letter-spacing: 0.02em;
+  }
+  .last-updated {
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* NAV */
+  nav {
+    display: flex; gap: 0; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav::-webkit-scrollbar { display: none; }
+  nav button {
+    background: none; border: none; cursor: pointer;
+    font-family: 'Mansalva', cursive; font-size: 14px;
+    color: rgba(255,255,255,0.55);
+    padding: 10px 16px; white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  nav button.active {
+    color: var(--lime);
+    border-bottom-color: var(--lime);
+  }
+
+  /* MAIN */
+  main { padding: 20px 16px 100px; max-width: 900px; margin: 0 auto; }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-title {
+    font-family: 'Mansalva', cursive;
+    font-size: 1rem;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+
+  /* METRICS ROW */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  @media (min-width: 480px) {
+    .metrics { grid-template-columns: repeat(4, 1fr); }
+  }
+  .metric {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .metric-value {
+    font-family: 'Erica One', serif;
+    font-size: 1.8rem;
+    color: var(--green);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .metric-label {
+    font-size: 11px;
+    color: var(--slate);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .metric.highlight .metric-value { color: var(--lime); }
+  .metric.warn .metric-value { color: var(--amber); }
+  .metric.alert .metric-value { color: var(--red); }
+
+  /* ALERT BANNER */
+  .alert-banner {
+    background: #FEF2F2;
+    border-left: 4px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .alert-banner strong { color: var(--red); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+
+  .warn-banner {
+    background: #FFFBEB;
+    border-left: 4px solid var(--amber);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .warn-banner strong { color: var(--amber); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+
+  .info-banner {
+    background: #F0FDF4;
+    border-left: 4px solid #16A34A;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .info-banner strong { color: #16A34A; display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+
+  /* BADGES */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge-critical { background: #FEE2E2; color: #991B1B; }
+  .badge-high { background: #FEF3C7; color: #92400E; }
+  .badge-normal { background: #E0E7FF; color: #3730A3; }
+  .badge-low { background: #F1F5F9; color: var(--slate); }
+  .badge-active { background: #DCFCE7; color: #166534; }
+  .badge-backlog { background: #F1F5F9; color: var(--slate); }
+  .badge-done { background: #DCFCE7; color: #166534; }
+  .badge-parked { background: #F1F5F9; color: #94A3B8; }
+  .badge-progress { background: #DBEAFE; color: #1D4ED8; }
+  .badge-cold { background: #F1F5F9; color: var(--slate); }
+  .badge-engaged { background: #FEF3C7; color: #92400E; }
+  .badge-warm { background: #FED7AA; color: #9A3412; }
+  .badge-nurture { background: #E0E7FF; color: #3730A3; }
+  .badge-enterprise { background: #F0FDF4; color: #166534; }
+  .badge-priority { background: #FEE2E2; color: #991B1B; }
+  .badge-audit { background: #DBEAFE; color: #1D4ED8; }
+
+  /* TASK TABLE */
+  .filter-bar {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .filter-btn {
+    padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: var(--card); font-family: 'Inter', sans-serif; font-size: 13px;
+    font-weight: 500; color: var(--slate); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn.active {
+    background: var(--green); border-color: var(--green); color: #fff;
+  }
+  .task-list { display: flex; flex-direction: column; gap: 8px; }
+  .task-item {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 12px 14px;
+    border-left: 4px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .task-item.overdue { border-left-color: var(--red); background: #FFFAFA; }
+  .task-item.blocked { border-left-color: var(--amber); background: #FEFCE8; }
+  .task-item.critical { border-left-color: var(--red); }
+  .task-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 8px; margin-bottom: 6px;
+  }
+  .task-id {
+    font-family: 'Mansalva', cursive;
+    font-size: 12px; color: var(--slate);
+    min-width: 44px;
+  }
+  .task-name {
+    font-size: 14px; font-weight: 500; flex: 1;
+    line-height: 1.4;
+  }
+  .task-meta {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    font-size: 12px; color: var(--slate);
+  }
+  .task-due { font-size: 12px; }
+  .task-due.overdue { color: var(--red); font-weight: 600; }
+  .task-owner { font-size: 12px; color: var(--slate); }
+  .task-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--blue); text-decoration: none;
+    font-weight: 500;
+  }
+  .blocked-by { font-size: 11px; color: var(--amber); font-weight: 500; }
+
+  /* PIPELINE CARDS */
+  .pipeline-stages {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding-bottom: 4px; margin-bottom: 16px;
+    scrollbar-width: none;
+  }
+  .pipeline-stages::-webkit-scrollbar { display: none; }
+  .stage-pill {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--card); border-radius: 10px; padding: 10px 16px;
+    min-width: 80px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    text-align: center;
+  }
+  .stage-count {
+    font-family: 'Erica One', serif; font-size: 1.5rem; color: var(--green);
+  }
+  .stage-name { font-size: 11px; color: var(--slate); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  .prospect-card {
+    background: var(--card); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-left: 4px solid var(--border);
+  }
+  .prospect-card.stage-engaged { border-left-color: var(--amber); }
+  .prospect-card.stage-warm { border-left-color: #F97316; }
+  .prospect-card.stage-nurture { border-left-color: var(--blue); }
+  .prospect-card.stage-audit { border-left-color: #8B5CF6; }
+  .prospect-card.stage-cold { border-left-color: var(--border); }
+  .prospect-name {
+    font-family: 'Mansalva', cursive; font-size: 1rem;
+    margin-bottom: 6px;
+  }
+  .prospect-operator { font-size: 12px; color: var(--slate); margin-bottom: 8px; }
+  .prospect-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--slate); }
+  .prospect-action {
+    margin-top: 8px; padding: 8px 10px;
+    background: var(--cream); border-radius: 8px;
+    font-size: 13px; line-height: 1.4;
+  }
+  .prospect-action strong { color: var(--green); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 2px; }
+
+  /* TEAM */
+  .team-card {
+    background: var(--card); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .team-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--green); color: var(--lime);
+    font-family: 'Erica One', serif; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .team-info { flex: 1; }
+  .team-name { font-family: 'Mansalva', cursive; font-size: 1rem; margin-bottom: 2px; }
+  .team-role { font-size: 12px; color: var(--slate); margin-bottom: 6px; }
+  .team-focus { font-size: 13px; line-height: 1.4; }
+
+  /* CLIENT TABLE */
+  .client-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .client-row:last-child { border-bottom: none; }
+  .client-row-name { font-weight: 500; }
+  .client-row-revenue { font-family: 'Mansalva', cursive; font-size: 1rem; color: var(--green); }
+
+  /* SECTION HEADING */
+  .section-heading {
+    font-family: 'Mansalva', cursive;
+    font-size: 1.1rem;
+    color: var(--green);
+    margin: 20px 0 10px;
+    padding-left: 2px;
+  }
+  .section-heading:first-child { margin-top: 0; }
+
+  /* BLOCKERS */
+  .blocker-item {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .blocker-item:last-child { border-bottom: none; }
+  .blocker-arrow { color: var(--red); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-overlay">
+  <h1>EEVA OS</h1>
+  <p>Business Operating System</p>
+  <div id="auth-form">
+    <input type="password" id="auth-input" placeholder="••••" maxlength="10" autocomplete="off">
+    <button id="auth-btn" onclick="checkAuth()">Enter</button>
+  </div>
+  <p id="auth-error">Incorrect passphrase.</p>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-top">
+    <h1>EEVA OS</h1>
+    <span class="last-updated" id="last-updated-label"></span>
+  </div>
+  <nav>
+    <button class="active" onclick="showTab('overview', this)">Overview</button>
+    <button onclick="showTab('tasks', this)">Tasks</button>
+    <button onclick="showTab('pipeline', this)">Pipeline</button>
+    <button onclick="showTab('team', this)">Team</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- OVERVIEW TAB -->
+  <div id="tab-overview" class="section active">
+
+    <!-- Alerts -->
+    <div id="alerts-container"></div>
+
+    <!-- Key metrics -->
+    <div class="metrics" id="metrics-container"></div>
+
+    <!-- Active clients -->
+    <p class="section-heading">Active Clients</p>
+    <div class="card" id="clients-container"></div>
+
+    <!-- Top priorities -->
+    <p class="section-heading">Top Priorities</p>
+    <div id="priorities-container"></div>
+
+    <!-- Blockers -->
+    <p class="section-heading">Critical Blockers</p>
+    <div class="card" id="blockers-container"></div>
+
+  </div>
+
+  <!-- TASKS TAB -->
+  <div id="tab-tasks" class="section">
+    <div class="filter-bar" id="task-filters">
+      <button class="filter-btn active" onclick="filterTasks('all', this)">All active</button>
+      <button class="filter-btn" onclick="filterTasks('overdue', this)">Overdue</button>
+      <button class="filter-btn" onclick="filterTasks('blocked', this)">Blocked</button>
+      <button class="filter-btn" onclick="filterTasks('critical', this)">Critical</button>
+      <button class="filter-btn" onclick="filterTasks('arek', this)">Arek's</button>
+      <button class="filter-btn" onclick="filterTasks('jem', this)">Jem's</button>
+    </div>
+    <div class="task-list" id="tasks-container"></div>
+  </div>
+
+  <!-- PIPELINE TAB -->
+  <div id="tab-pipeline" class="section">
+    <div class="pipeline-stages" id="pipeline-stages"></div>
+    <p class="section-heading">Engaged &amp; Warm</p>
+    <div id="pipeline-hot"></div>
+    <p class="section-heading">Nurture &amp; Cold Priority</p>
+    <div id="pipeline-nurture"></div>
+    <p class="section-heading">Cold — Top 10</p>
+    <div id="pipeline-cold"></div>
+  </div>
+
+  <!-- TEAM TAB -->
+  <div id="tab-team" class="section">
+    <p class="section-heading">The Team</p>
+    <div id="team-container"></div>
+  </div>
+
+</main>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+const LAST_UPDATED = "17 Mar 2026";
+const TODAY = new Date("2026-03-17");
+
+const CLIENTS = [
+  { name: "The Eltham College Foundation", centres: 5, mrr: 2250, status: "Active — 1 pilot live, 4 pending", agreement: "8 Jan 2026" },
+];
+
+const BLOCKERS = [
+  { blocker: "T-015 (Website build)", blocks: "T-043 (ESA form + page)" },
+  { blocker: "T-046 (Director names, 46 remaining)", blocks: "T-051 (Print letters)" },
+  { blocker: "T-069 (GMB admin from Chris)", blocks: "T-068 (KoC Google Maps fix)" },
+  { blocker: "T-011 (KoC subaccount build)", blocks: "T-059–T-067 (all KoC GHL tasks)" },
+  { blocker: "Jenn on leave 1–13 Apr + Arek away 30 Mar–15 Apr", blocks: "KoC training and go-live" },
+];
+
+const TASKS = [
+  { id:"T-011", task:"Build Kids on Collins GHL subaccount", owner:"Jem", status:"Active", priority:"High", due:"", blockedBy:"", area:"GHL", clickup:"86d24bb2x" },
+  { id:"T-015", task:"Update eeva.au website on GHL", owner:"Jem", status:"Active", priority:"Critical", due:"", blockedBy:"", area:"Website", clickup:"86d24bb6b" },
+  { id:"T-018", task:"Ping Jem day before biweekly payroll Monday", owner:"Arek", status:"Active", priority:"Normal", due:"2026-03-15", blockedBy:"", area:"Ops", clickup:"" },
+  { id:"T-020", task:"Jem to document all GHL work via summaries", owner:"Jem", status:"Active", priority:"Normal", due:"", blockedBy:"", area:"Ops", clickup:"" },
+  { id:"T-026", task:"Phone call follow-up with JoAnn Maitland (Sparkways)", owner:"Arek", status:"Active", priority:"High", due:"2026-03-06", blockedBy:"", area:"Sales", clickup:"" },
+  { id:"T-028", task:"Build outreach pipeline with automations in GHL", owner:"Arek", status:"Active", priority:"High", due:"", blockedBy:"", area:"Outreach", clickup:"" },
+  { id:"T-037", task:"Develop YouTube video strategy to promote EEVA", owner:"Arek", status:"Active", priority:"High", due:"", blockedBy:"", area:"Marketing", clickup:"" },
+  { id:"T-043", task:"Build ESA form and page in GHL", owner:"Jem", status:"Backlog", priority:"Critical", due:"", blockedBy:"T-015", area:"Website", clickup:"" },
+  { id:"T-045", task:"Import email sequences and complete GHL outreach automations", owner:"Jem", status:"Backlog", priority:"High", due:"", blockedBy:"", area:"Outreach", clickup:"" },
+  { id:"T-046", task:"Call centres to collect director names (46 remaining)", owner:"Arek", status:"In Progress", priority:"High", due:"2026-03-28", blockedBy:"", area:"Outreach", clickup:"" },
+  { id:"T-051", task:"Print individualised letters for each centre", owner:"Arek", status:"Not Started", priority:"High", due:"2026-04-16", blockedBy:"T-046", area:"Outreach", clickup:"" },
+  { id:"T-053", task:"Practice full sales conversation using LAPS framework", owner:"Arek", status:"Backlog", priority:"High", due:"", blockedBy:"", area:"Sales", clickup:"" },
+  { id:"T-054", task:"Start weekly LAPS tracking (first Monday update)", owner:"Arek", status:"Backlog", priority:"Normal", due:"2026-03-17", blockedBy:"", area:"Sales", clickup:"" },
+  { id:"T-059", task:"Configure KoC tour booking calendar in GHL", owner:"Jem", status:"Backlog", priority:"High", due:"", blockedBy:"T-011", area:"GHL", clickup:"" },
+  { id:"T-063", task:"Build KoC post-tour nurture sequence (4 emails)", owner:"Jem", status:"Backlog", priority:"High", due:"", blockedBy:"T-011", area:"Client", clickup:"" },
+  { id:"T-067", task:"Build KoC KPI dashboard (board reporting)", owner:"Jem", status:"Backlog", priority:"High", due:"", blockedBy:"T-011", area:"GHL", clickup:"" },
+  { id:"T-068", task:"Fix KoC Google Maps pin (wrong building)", owner:"Arek", status:"Active", priority:"High", due:"", blockedBy:"T-069", area:"Client", clickup:"" },
+  { id:"T-069", task:"Get GMB admin invitation from Chris (Optimise)", owner:"Arek", status:"Active", priority:"High", due:"2026-03-19", blockedBy:"", area:"Client", clickup:"" },
+  { id:"T-084", task:"Call Megan Holt back (OPPIA follow-up)", owner:"Arek", status:"Active", priority:"High", due:"2026-03-16", blockedBy:"", area:"Sales", clickup:"" },
+];
+
+const PIPELINE = [
+  { centre:"OPPIA Early Learning", operator:"OPPIA Childcare Group", stage:"Engaged", tier:"Priority", lastActivity:"Phone call 13 Mar. Megan warm, heading to funeral.", lastDate:"2026-03-13", nextAction:"Call Megan Holt back", nextDate:"2026-03-16", contact:"Megan Holt" },
+  { centre:"Sparkways (brand-level)", operator:"Try Australia Children's Services", stage:"Engaged", tier:"Enterprise", lastActivity:"Called JoAnn — no answer, no voicemail.", lastDate:"2026-03-13", nextAction:"Keep trying JoAnn periodically", nextDate:"2026-03-17", contact:"JoAnn Maitland" },
+  { centre:"Bimbi Early Learning and Kindergarten", operator:"Paul Mondo", stage:"Warm", tier:"1", lastActivity:"Damien confirmed intro to Paul", lastDate:"2026-03-12", nextAction:"Show-and-tell call with Damien then intro to Paul", nextDate:"2026-03-13", contact:"Paul Mondo (via Damien Gooden)" },
+  { centre:"Koorana Child & Family Services", operator:"Koorana C&FS Ltd", stage:"Warm", tier:"", lastActivity:"Scorecard prepared", lastDate:"2026-03-11", nextAction:"Send scorecard to Morgan Fitzpatrick", nextDate:"", contact:"Morgan Fitzpatrick, morgan.fitzpatrick@koorana.org.au" },
+  { centre:"Pelican Childcare Craigieburn", operator:"G8 Education", stage:"Nurture", tier:"Priority", lastActivity:"Phone call 13 Mar. Warm — G8 providing support. Will contact EEVA if G8 falls short.", lastDate:"2026-03-13", nextAction:"Check in again in 4–6 weeks", nextDate:"2026-04-24", contact:"Simran Kaur" },
+  { centre:"Yaringa Kindergarten", operator:"DMVS Childcare", stage:"Nurture", tier:"Normal", lastActivity:"Scorecard delivered", lastDate:"2026-03-05", nextAction:"Follow up mid-April", nextDate:"2026-04-13", contact:"Deb Maillard, office@yaringakinder.com.au" },
+  { centre:"Aurora Early Education Rowville", operator:"Aurora Early Education", stage:"Cold", tier:"1", lastActivity:"", lastDate:"", nextAction:"Research and prepare scorecard", nextDate:"", contact:"Sheela Edwards — Priority #1" },
+  { centre:"Precious Seeds Early Learning", operator:"Precious Seeds", stage:"Cold", tier:"1", lastActivity:"", lastDate:"", nextAction:"Research and prepare scorecard", nextDate:"", contact:"Atef Samuel — Priority #2" },
+  { centre:"Choklits Child Care Ringwood", operator:"Choklits", stage:"Cold", tier:"1", lastActivity:"", lastDate:"", nextAction:"Research and prepare scorecard", nextDate:"", contact:"Matt Reynolds — Priority #3" },
+  { centre:"Narre Warren North Childcare", operator:"Independent", stage:"Cold", tier:"1", lastActivity:"", lastDate:"", nextAction:"Research and prepare scorecard", nextDate:"", contact:"Caitlin Carmichael — Priority #4" },
+  { centre:"Gloryland Early Learning Mitcham", operator:"Gloryland", stage:"Cold", tier:"1", lastActivity:"", lastDate:"", nextAction:"Research and prepare scorecard", nextDate:"", contact:"Gabriel Goh — Priority #5" },
+];
+
+const TEAM = [
+  { name:"Arek Rainczuk", initials:"AR", role:"Founder — strategy, sales, production", focus:"Sales outreach, KoC client management, US trip 30 Mar–15 Apr", location:"Belgrave, VIC" },
+  { name:"Jem Donayre", initials:"JD", role:"GHL Technical Support (Philippines)", focus:"KoC subaccount build (T-011), website build (T-015)", location:"Philippines" },
+  { name:"Nick Varley", initials:"NV", role:"Casual Video Editor (remote)", focus:"Video editing as shoots are delivered", location:"QLD (remote)" },
+  { name:"Sam Young", initials:"SY", role:"Subcontract Videographer", focus:"On-location filming", location:"Bayswater North, VIC" },
+];
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+
+function checkAuth() {
+  const val = document.getElementById('auth-input').value;
+  if (val === '1140') {
+    sessionStorage.setItem('eeva_auth', '1');
+    document.getElementById('auth-overlay').style.display = 'none';
+    buildDashboard();
+  } else {
+    document.getElementById('auth-error').style.display = 'block';
+    document.getElementById('auth-input').value = '';
+    document.getElementById('auth-input').focus();
+  }
+}
+
+document.getElementById('auth-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkAuth();
+});
+
+if (sessionStorage.getItem('eeva_auth') === '1') {
+  document.getElementById('auth-overlay').style.display = 'none';
+  window.addEventListener('DOMContentLoaded', buildDashboard);
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+
+function showTab(tab, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+function isOverdue(due) {
+  if (!due) return false;
+  return new Date(due) < TODAY;
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const parts = d.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return parts[2].replace(/^0/, '') + ' ' + months[parseInt(parts[1]) - 1];
+}
+
+function badgeStatus(s) {
+  const map = { Active:'active', Backlog:'backlog', Done:'done', Parked:'parked', 'In Progress':'progress', 'Not Started':'backlog' };
+  return `<span class="badge badge-${map[s] || 'backlog'}">${s}</span>`;
+}
+
+function badgePriority(p) {
+  const map = { Critical:'critical', High:'high', Normal:'normal', Low:'low' };
+  return `<span class="badge badge-${map[p] || 'normal'}">${p}</span>`;
+}
+
+function badgeStage(s) {
+  const map = { Engaged:'engaged', Warm:'warm', Nurture:'nurture', Cold:'cold', 'Audit Delivered':'audit', Priority:'priority', Enterprise:'enterprise' };
+  const key = (s||'').toLowerCase().replace(/ /g, '');
+  return `<span class="badge badge-${map[s] || 'cold'}">${s}</span>`;
+}
+
+function clickupLink(id) {
+  if (!id) return '';
+  return `<a class="task-link" href="https://app.clickup.com/t/${id}" target="_blank">↗ ClickUp</a>`;
+}
+
+// ─── BUILD ────────────────────────────────────────────────────────────────────
+
+function buildDashboard() {
+  document.getElementById('last-updated-label').textContent = 'Updated ' + LAST_UPDATED;
+  buildOverview();
+  buildTasks('all');
+  buildPipeline();
+  buildTeam();
+}
+
+function buildOverview() {
+  // Alerts
+  const alerts = document.getElementById('alerts-container');
+  const overdueTasks = TASKS.filter(t => isOverdue(t.due) && !['Done','Parked'].includes(t.status));
+  if (overdueTasks.length > 0) {
+    overdueTasks.forEach(t => {
+      alerts.innerHTML += `<div class="alert-banner"><strong>Overdue</strong>${t.id}: ${t.task} — was due ${formatDate(t.due)}</div>`;
+    });
+  }
+  alerts.innerHTML += `<div class="warn-banner"><strong>Travel</strong>Arek away 30 Mar – 15 Apr (US family trip). Direct mail launch deferred to mid-April.</div>`;
+
+  // Metrics
+  const activeTasks = TASKS.filter(t => ['Active','In Progress'].includes(t.status));
+  const blockedTasks = TASKS.filter(t => t.blockedBy && !['Done','Parked'].includes(t.status));
+  const mrr = CLIENTS.reduce((sum, c) => sum + c.mrr, 0);
+  const metrics = document.getElementById('metrics-container');
+  metrics.innerHTML = `
+    <div class="metric highlight"><div class="metric-value">$${mrr.toLocaleString()}</div><div class="metric-label">MRR (ex GST)</div></div>
+    <div class="metric"><div class="metric-value">${CLIENTS.length}</div><div class="metric-label">Active clients</div></div>
+    <div class="metric warn"><div class="metric-value">${activeTasks.length}</div><div class="metric-label">Active tasks</div></div>
+    <div class="metric alert"><div class="metric-value">${overdueTasks.length}</div><div class="metric-label">Overdue</div></div>
+  `;
+
+  // Clients
+  const clientsEl = document.getElementById('clients-container');
+  CLIENTS.forEach(c => {
+    clientsEl.innerHTML += `
+      <div class="client-row">
+        <div>
+          <div class="client-row-name">${c.name}</div>
+          <div style="font-size:12px;color:var(--slate)">${c.centres} centres · ${c.status}</div>
+        </div>
+        <div class="client-row-revenue">$${c.mrr.toLocaleString()}/mo</div>
+      </div>`;
+  });
+
+  // Top priorities — critical + overdue + high active
+  const priorities = TASKS.filter(t =>
+    !['Done','Parked'].includes(t.status) &&
+    (t.priority === 'Critical' || isOverdue(t.due) || (t.priority === 'High' && ['Active','In Progress'].includes(t.status)))
+  ).slice(0, 6);
+  const priEl = document.getElementById('priorities-container');
+  priorities.forEach(t => {
+    const over = isOverdue(t.due);
+    const blocked = t.blockedBy;
+    priEl.innerHTML += `
+      <div class="task-item ${over ? 'overdue' : ''} ${blocked ? 'blocked' : ''}">
+        <div class="task-header">
+          <span class="task-id">${t.id}</span>
+          <span class="task-name">${t.task}</span>
+        </div>
+        <div class="task-meta">
+          ${badgePriority(t.priority)}
+          ${badgeStatus(t.status)}
+          ${t.due ? `<span class="task-due ${over ? 'overdue' : ''}">Due ${formatDate(t.due)}${over ? ' — OVERDUE' : ''}</span>` : ''}
+          <span class="task-owner">${t.owner}</span>
+          ${t.blockedBy ? `<span class="blocked-by">Blocked by ${t.blockedBy}</span>` : ''}
+          ${clickupLink(t.clickup)}
+        </div>
+      </div>`;
+  });
+
+  // Blockers
+  const blEl = document.getElementById('blockers-container');
+  BLOCKERS.forEach(b => {
+    blEl.innerHTML += `
+      <div class="blocker-item">
+        <span class="blocker-arrow">→</span>
+        <div><strong>${b.blocker}</strong> blocks <span style="color:var(--red)">${b.blocks}</span></div>
+      </div>`;
+  });
+}
+
+function buildTasks(filter) {
+  let tasks = TASKS.filter(t => !['Done','Parked'].includes(t.status));
+  if (filter === 'overdue') tasks = tasks.filter(t => isOverdue(t.due));
+  else if (filter === 'blocked') tasks = tasks.filter(t => t.blockedBy);
+  else if (filter === 'critical') tasks = tasks.filter(t => t.priority === 'Critical');
+  else if (filter === 'arek') tasks = tasks.filter(t => t.owner === 'Arek');
+  else if (filter === 'jem') tasks = tasks.filter(t => t.owner === 'Jem');
+  // Sort: overdue first, then critical, then high
+  tasks.sort((a, b) => {
+    const aOver = isOverdue(a.due) ? 0 : 1;
+    const bOver = isOverdue(b.due) ? 0 : 1;
+    if (aOver !== bOver) return aOver - bOver;
+    const pMap = {Critical:0, High:1, Normal:2, Low:3};
+    return (pMap[a.priority]||2) - (pMap[b.priority]||2);
+  });
+  const el = document.getElementById('tasks-container');
+  el.innerHTML = '';
+  if (tasks.length === 0) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:var(--slate);padding:32px">No tasks match this filter.</div>';
+    return;
+  }
+  tasks.forEach(t => {
+    const over = isOverdue(t.due);
+    const blocked = t.blockedBy;
+    el.innerHTML += `
+      <div class="task-item ${over ? 'overdue' : ''} ${blocked ? 'blocked' : ''}">
+        <div class="task-header">
+          <span class="task-id">${t.id}</span>
+          <span class="task-name">${t.task}</span>
+        </div>
+        <div class="task-meta">
+          ${badgePriority(t.priority)}
+          ${badgeStatus(t.status)}
+          ${t.due ? `<span class="task-due ${over ? 'overdue' : ''}">Due ${formatDate(t.due)}${over ? ' ⚠' : ''}</span>` : ''}
+          <span class="task-owner">${t.owner} · ${t.area}</span>
+          ${t.blockedBy ? `<span class="blocked-by">⚠ Blocked by ${t.blockedBy}</span>` : ''}
+          ${clickupLink(t.clickup)}
+        </div>
+      </div>`;
+  });
+}
+
+function filterTasks(filter, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildTasks(filter);
+}
+
+function buildPipeline() {
+  // Stage counts
+  const stages = ['Engaged','Warm','Nurture','Cold'];
+  const stageCounts = {};
+  stages.forEach(s => stageCounts[s] = PIPELINE.filter(p => p.stage === s).length);
+  const stageEl = document.getElementById('pipeline-stages');
+  stages.forEach(s => {
+    stageEl.innerHTML += `<div class="stage-pill"><div class="stage-count">${stageCounts[s]}</div><div class="stage-name">${s}</div></div>`;
+  });
+
+  // Hot (engaged + warm)
+  const hotEl = document.getElementById('pipeline-hot');
+  PIPELINE.filter(p => ['Engaged','Warm'].includes(p.stage)).forEach(p => {
+    hotEl.innerHTML += prospectCard(p);
+  });
+
+  // Nurture
+  const nurtureEl = document.getElementById('pipeline-nurture');
+  PIPELINE.filter(p => p.stage === 'Nurture').forEach(p => {
+    nurtureEl.innerHTML += prospectCard(p);
+  });
+
+  // Cold top 5
+  const coldEl = document.getElementById('pipeline-cold');
+  PIPELINE.filter(p => p.stage === 'Cold').slice(0, 5).forEach(p => {
+    coldEl.innerHTML += prospectCard(p);
+  });
+}
+
+function prospectCard(p) {
+  const stageClass = 'stage-' + p.stage.toLowerCase().replace(/ /g, '-');
+  return `
+    <div class="prospect-card ${stageClass}">
+      <div class="prospect-name">${p.centre}</div>
+      <div class="prospect-operator">${p.operator}</div>
+      <div class="prospect-meta">
+        ${badgeStage(p.stage)}
+        ${p.tier ? badgeStage(p.tier) : ''}
+        ${p.contact ? `<span>👤 ${p.contact}</span>` : ''}
+        ${p.lastDate ? `<span>Last: ${formatDate(p.lastDate)}</span>` : ''}
+      </div>
+      ${p.nextAction ? `<div class="prospect-action"><strong>Next action${p.nextDate ? ' · ' + formatDate(p.nextDate) : ''}</strong>${p.nextAction}</div>` : ''}
+    </div>`;
+}
+
+function buildTeam() {
+  const el = document.getElementById('team-container');
+  TEAM.forEach(m => {
+    el.innerHTML += `
+      <div class="team-card">
+        <div class="team-avatar">${m.initials}</div>
+        <div class="team-info">
+          <div class="team-name">${m.name}</div>
+          <div class="team-role">${m.role} · ${m.location}</div>
+          <div class="team-focus">${m.focus}</div>
+        </div>
+      </div>`;
+  });
+}
+
+// Run if already authenticated (page refresh)
+if (sessionStorage.getItem('eeva_auth') === '1') {
+  document.getElementById('auth-overlay').style.display = 'none';
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', buildDashboard);
+  } else {
+    buildDashboard();
+  }
+}
+</script>
+</body>
+</html>
